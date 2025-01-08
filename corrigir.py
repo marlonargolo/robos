@@ -42,7 +42,7 @@ def monitorar_grupo(driver, nome_grupo, empresas):
 
             for mensagem in mensagens:
                 try:
-                    # Verificar se o atributo 'data-pre-plain-text' está presente
+                    # Localizar o remetente e o horário
                     remetente_element = mensagem.find_element(By.XPATH, ".//div[contains(@class, 'copyable-text')]")
                     remetente = remetente_element.get_attribute("data-pre-plain-text")
 
@@ -52,13 +52,13 @@ def monitorar_grupo(driver, nome_grupo, empresas):
                     texto_element = mensagem.find_element(By.XPATH, ".//span[contains(@class, 'selectable-text')]")
                     texto_mensagem = texto_element.text
 
-                    # Extraímos o timestamp da mensagem no formato "[HH:mm]"
+                    # Método alternativo para obter o horário diretamente do DOM
                     try:
-                        timestamp = remetente.strip().split(",")[1].strip("[]").split(" ")[0]
-                        horario_recebido = datetime.strptime(timestamp, "%H:%M").replace(
+                        horario_element = mensagem.find_element(By.XPATH, ".//span[contains(@class, 'message-datetime')]")
+                        horario_recebido = datetime.strptime(horario_element.text, "%H:%M").replace(
                             year=datetime.now().year, month=datetime.now().month, day=datetime.now().day
                         )
-                    except (IndexError, ValueError):
+                    except Exception:
                         print("Horário não encontrado ou em formato inesperado. Ignorando mensagem.")
                         continue
 
@@ -88,6 +88,7 @@ def monitorar_grupo(driver, nome_grupo, empresas):
                     print(f"Erro ao processar mensagem: {e}")
     except Exception as e:
         print(f"Erro ao monitorar o grupo: {e}")
+
 
 
 def responder_mensagem(driver, mensagem, resposta):
