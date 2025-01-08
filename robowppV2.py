@@ -1,4 +1,4 @@
-#atualizado
+#atualizado1
 import time
 from datetime import datetime, timedelta
 from selenium import webdriver
@@ -31,6 +31,7 @@ def monitorar_grupo(driver, nome_grupo, empresas):
 
         ultima_resposta = datetime.min  # Inicialmente, sem nenhuma resposta enviada
         respondendo = False  # Controle para aguardar mensagens após o período de espera
+        mensagens_respondidas = set()  # Conjunto para rastrear mensagens já respondidas
 
         while True:
             time.sleep(2)
@@ -50,9 +51,15 @@ def monitorar_grupo(driver, nome_grupo, empresas):
                     texto_element = mensagem.find_element(By.XPATH, ".//span[contains(@class, 'selectable-text')]")
                     texto_mensagem = texto_element.text
 
-                    # Verifica se a mensagem veio de uma empresa da lista
+                    # Verifica se a mensagem veio de uma empresa da lista e se já foi respondida
                     if remetente and any(empresa.lower() in remetente.lower() for empresa in empresas):
                         empresa_detectada = next(empresa for empresa in empresas if empresa.lower() in remetente.lower())
+
+                        # Ignora a mensagem se ela já foi respondida
+                        if texto_mensagem in mensagens_respondidas:
+                            print(f"Mensagem já respondida: {texto_mensagem}")
+                            continue
+
                         mensagem_mais_recente = (mensagem, texto_mensagem)
                         break  # Encontrou uma mensagem válida, interrompe o loop
                 except Exception as e:
@@ -64,7 +71,7 @@ def monitorar_grupo(driver, nome_grupo, empresas):
 
             mensagem, texto_mensagem = mensagem_mais_recente
 
-            # Responder a nova mensagem mais recente
+            # Responder à mensagem mais recente
             try:
                 print(f"Respondendo à mensagem mais recente de {empresa_detectada}: {texto_mensagem}")
                 resposta = f"118"
@@ -73,10 +80,14 @@ def monitorar_grupo(driver, nome_grupo, empresas):
                 # Atualizar o controle de tempo e estado
                 ultima_resposta = datetime.now()
                 respondendo = True  # Indica que o bot está aguardando o próximo ciclo
+
+                # Adiciona a mensagem ao conjunto de mensagens respondidas
+                mensagens_respondidas.add(texto_mensagem)
             except Exception as e:
                 print(f"Erro ao responder mensagem de {empresa_detectada}: {e}")
     except Exception as e:
         print(f"Erro ao monitorar o grupo: {e}")
+
 
 
 def responder_mensagem(driver, mensagem, resposta):
