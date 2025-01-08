@@ -1,3 +1,4 @@
+#atualizado
 import time
 from datetime import datetime, timedelta
 from selenium import webdriver
@@ -19,7 +20,6 @@ def iniciar_whatsapp():
 
 def monitorar_grupo(driver, nome_grupo, empresas):
     try:
-        # Esperar até que o campo de pesquisa esteja visível
         search_box = WebDriverWait(driver, 10).until(
             EC.visibility_of_element_located((By.XPATH, "//div[@contenteditable='true']"))
         )
@@ -28,16 +28,21 @@ def monitorar_grupo(driver, nome_grupo, empresas):
         search_box.send_keys(Keys.ENTER)
 
         print(f"Monitorando o grupo: {nome_grupo}")
-        
-        # Dicionário para armazenar a última mensagem de cada empresa
-        mensagens_por_empresa = {}
-        # Dicionário para armazenar o tempo da última resposta enviada para cada empresa
-        ultima_resposta = {}
+
+        ultima_resposta = datetime.min  # Inicialmente, sem nenhuma resposta enviada
+        respondendo = False  # Controle para aguardar mensagens após o período de espera
 
         while True:
             time.sleep(2)
+
+            # Se estamos aguardando e o tempo de 4 minutos não passou, continue
+            if respondendo and (datetime.now() - ultima_resposta < timedelta(minutes=4)):
+                continue  # Aguarda até que o tempo de espera passe
+
             mensagens = driver.find_elements(By.XPATH, "//div[contains(@class, 'message-in')]")
-            
+            mensagem_mais_recente = None
+            empresa_detectada = None
+
             for mensagem in mensagens[-5:]:  # Apenas as últimas 5 mensagens
                 try:
                     remetente_element = mensagem.find_element(By.XPATH, ".//div[contains(@class, 'copyable-text')]")
@@ -48,37 +53,31 @@ def monitorar_grupo(driver, nome_grupo, empresas):
                     # Verifica se a mensagem veio de uma empresa da lista
                     if remetente and any(empresa.lower() in remetente.lower() for empresa in empresas):
                         empresa_detectada = next(empresa for empresa in empresas if empresa.lower() in remetente.lower())
-                        
-                        # Armazena a mensagem mais recente da empresa
-                        mensagens_por_empresa[empresa_detectada] = (mensagem, texto_mensagem)
+                        mensagem_mais_recente = (mensagem, texto_mensagem)
+                        break  # Encontrou uma mensagem válida, interrompe o loop
                 except Exception as e:
                     print(f"Erro ao processar mensagem: {e}")
 
-            # Responder apenas a mensagem mais recente de cada empresa após o tempo de espera
-            agora = datetime.now()
-            for empresa, (mensagem, texto_mensagem) in mensagens_por_empresa.items():
-                if empresa in ultima_resposta:
-                    tempo_espera = agora - ultima_resposta[empresa]
-                    if tempo_espera < timedelta(minutes=4):
-                        print(f"Aguardando 4 minutos para responder novamente a {empresa}.")
-                        continue
-                
-                # Responder à mensagem mais recente
-                try:
-                    print(f"Respondendo à mensagem mais recente de {empresa}: {texto_mensagem}")
-                    numero_aleatorio = random.randint(1, 100)
-                    resposta = f"Mensagem respondida! Seu número é: {numero_aleatorio}"
-                    responder_mensagem(driver, mensagem, resposta)
-                    
-                    # Atualizar o tempo da última resposta
-                    ultima_resposta[empresa] = datetime.now()
-                except Exception as e:
-                    print(f"Erro ao responder mensagem de {empresa}: {e}")
-            
-            # Limpar o dicionário para a próxima verificação
-            mensagens_por_empresa.clear()
+            # Se nenhuma nova mensagem foi encontrada, continue
+            if not mensagem_mais_recente:
+                continue
+
+            mensagem, texto_mensagem = mensagem_mais_recente
+
+            # Responder a nova mensagem mais recente
+            try:
+                print(f"Respondendo à mensagem mais recente de {empresa_detectada}: {texto_mensagem}")
+                resposta = f"118"
+                responder_mensagem(driver, mensagem, resposta)
+
+                # Atualizar o controle de tempo e estado
+                ultima_resposta = datetime.now()
+                respondendo = True  # Indica que o bot está aguardando o próximo ciclo
+            except Exception as e:
+                print(f"Erro ao responder mensagem de {empresa_detectada}: {e}")
     except Exception as e:
         print(f"Erro ao monitorar o grupo: {e}")
+
 
 def responder_mensagem(driver, mensagem, resposta):
     try:
