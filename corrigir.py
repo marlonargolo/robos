@@ -42,9 +42,13 @@ def monitorar_grupo(driver, nome_grupo, empresas):
 
             for mensagem in mensagens:
                 try:
-                    # Localizar o remetente e o horário
-                    remetente_element = mensagem.find_element(By.XPATH, ".//div[contains(@class, 'copyable-text')]")
-                    remetente = remetente_element.get_attribute("data-pre-plain-text")
+                    # Verificar se o atributo 'data-pre-plain-text' está presente
+                    try:
+                        remetente_element = mensagem.find_element(By.XPATH, ".//div[contains(@class, 'copyable-text')]")
+                        remetente = remetente_element.get_attribute("data-pre-plain-text")
+                    except Exception:
+                        print("Elemento 'copyable-text' não encontrado. Ignorando mensagem.")
+                        continue
 
                     if not remetente:
                         continue  # Pula mensagens que não possuem o atributo esperado
@@ -54,12 +58,16 @@ def monitorar_grupo(driver, nome_grupo, empresas):
 
                     # Método alternativo para obter o horário diretamente do DOM
                     try:
-                        horario_element = mensagem.find_element(By.XPATH, ".//span[contains(@class, 'message-datetime')]")
-                        horario_recebido = datetime.strptime(horario_element.text, "%H:%M").replace(
-                            year=datetime.now().year, month=datetime.now().month, day=datetime.now().day
-                        )
+                        # Ajuste o XPath para localizar o horário no WhatsApp Web
+                        horario_recebido = datetime.now()  # Fallback: Marca como o horário atual
+                        horario_element = mensagem.find_element(By.XPATH, ".//div[@class='_1WLfg']")
+                        if horario_element:
+                            horario_texto = horario_element.text
+                            horario_recebido = datetime.strptime(horario_texto, "%H:%M").replace(
+                                year=datetime.now().year, month=datetime.now().month, day=datetime.now().day
+                            )
                     except Exception:
-                        print("Horário não encontrado ou em formato inesperado. Ignorando mensagem.")
+                        print("Horário não encontrado ou em formato inesperado. Usando horário atual.")
                         continue
 
                     # Verifica se a mensagem veio de uma empresa da lista
@@ -88,6 +96,7 @@ def monitorar_grupo(driver, nome_grupo, empresas):
                     print(f"Erro ao processar mensagem: {e}")
     except Exception as e:
         print(f"Erro ao monitorar o grupo: {e}")
+
 
 
 
