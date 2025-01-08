@@ -1,3 +1,4 @@
+import hashlib
 import time
 from datetime import datetime, timedelta
 from selenium import webdriver
@@ -8,6 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import random
 
+
 def iniciar_whatsapp():
     options = webdriver.ChromeOptions()
     options.add_argument("--user-data-dir=./perfil")
@@ -16,6 +18,15 @@ def iniciar_whatsapp():
     print("Escaneie o QR Code no WhatsApp Web e pressione ENTER para continuar...")
     input()  # Pausa até o usuário pressionar ENTER
     return driver
+
+
+def gerar_id_mensagem(remetente, texto_mensagem):
+    """
+    Gera um identificador único para uma mensagem usando um hash do remetente e texto.
+    """
+    hash_input = f"{remetente}-{texto_mensagem}"
+    return hashlib.md5(hash_input.encode()).hexdigest()
+
 
 def monitorar_grupo(driver, nome_grupo, empresas):
     try:
@@ -29,7 +40,7 @@ def monitorar_grupo(driver, nome_grupo, empresas):
         print(f"Monitorando o grupo: {nome_grupo}")
 
         ultima_resposta = datetime.min  # Inicialmente, nenhuma mensagem foi respondida
-        mensagens_respondidas = {}  # Dicionário para rastrear mensagens respondidas com timestamp
+        mensagens_respondidas = set()  # Conjunto para rastrear mensagens já respondidas
 
         while True:
             time.sleep(2)
@@ -56,32 +67,17 @@ def monitorar_grupo(driver, nome_grupo, empresas):
                     texto_element = mensagem.find_element(By.XPATH, ".//span[contains(@class, 'selectable-text')]")
                     texto_mensagem = texto_element.text
 
-                    # Método alternativo para obter o horário diretamente do DOM
-                    try:
-                        # Ajuste o XPath para localizar o horário no WhatsApp Web
-                        horario_recebido = datetime.now()  # Fallback: Marca como o horário atual
-                        horario_element = mensagem.find_element(By.XPATH, ".//div[@class='_1WLfg']")
-                        if horario_element:
-                            horario_texto = horario_element.text
-                            horario_recebido = datetime.strptime(horario_texto, "%H:%M").replace(
-                                year=datetime.now().year, month=datetime.now().month, day=datetime.now().day
-                            )
-                    except Exception:
-                        print("Horário não encontrado ou em formato inesperado. Usando horário atual.")
+                    # Gerar identificador único para a mensagem
+                    id_mensagem = gerar_id_mensagem(remetente, texto_mensagem)
+
+                    # Verifica se a mensagem já foi respondida
+                    if id_mensagem in mensagens_respondidas:
+                        print(f"Mensagem já respondida: {texto_mensagem}")
                         continue
 
                     # Verifica se a mensagem veio de uma empresa da lista
-                    if remetente and any(empresa.lower() in remetente.lower() for empresa in empresas):
+                    if any(empresa.lower() in remetente.lower() for empresa in empresas):
                         empresa_detectada = next(empresa for empresa in empresas if empresa.lower() in remetente.lower())
-
-                        # Ignora mensagens recebidas antes do início do bot
-                        if horario_recebido < ultima_resposta:
-                            continue
-
-                        # Ignora mensagens já respondidas
-                        if (texto_mensagem, horario_recebido) in mensagens_respondidas.values():
-                            print(f"Mensagem já respondida: {texto_mensagem}")
-                            continue
 
                         # Responder a mensagem
                         print(f"Respondendo à mensagem de {empresa_detectada}: {texto_mensagem}")
@@ -89,15 +85,13 @@ def monitorar_grupo(driver, nome_grupo, empresas):
                         responder_mensagem(driver, mensagem, resposta)
 
                         # Atualizar o controle de mensagens respondidas e última resposta
-                        mensagens_respondidas[empresa_detectada] = (texto_mensagem, horario_recebido)
+                        mensagens_respondidas.add(id_mensagem)
                         ultima_resposta = datetime.now()
                         break  # Sai do loop para reiniciar o ciclo de monitoramento
                 except Exception as e:
                     print(f"Erro ao processar mensagem: {e}")
     except Exception as e:
         print(f"Erro ao monitorar o grupo: {e}")
-
-
 
 
 def responder_mensagem(driver, mensagem, resposta):
@@ -130,6 +124,7 @@ def responder_mensagem(driver, mensagem, resposta):
         print("Mensagem respondida com sucesso.")
     except Exception as e:
         print(f"Erro ao responder a mensagem: {e}")
+
 
 if __name__ == "__main__":
     lista_empresas = ["Marlon ChatBoot", "Luana Lima", "Guilherme - Barbeiro", "Hugo"]
