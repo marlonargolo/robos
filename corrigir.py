@@ -53,14 +53,24 @@ def monitorar_grupo(driver, nome_grupo, empresas):
 
                     # Obter o timestamp da mensagem
                     timestamp_str = remetente_element.get_attribute("data-pre-plain-text").strip()
-                    timestamp_msg = datetime.strptime(
-                        timestamp_str[1:20],  # Ajuste o formato conforme o necessário
-                        "%d/%m/%Y, %H:%M:%S"
-                    )
-
-                    # Ignorar mensagens enviadas antes do início do monitoramento
+                    
+                    # Extrair apenas o trecho de data e hora correto
+                    # Exemplo de entrada: "[20:16, 08/01/2025] Nome do remetente:"
+                    # Resultado desejado: "20:16, 08/01/2025"
+                    timestamp_match = re.search(r"\[(\d{2}:\d{2}, \d{2}/\d{2}/\d{4})\]", timestamp_str)
+                    if timestamp_match:
+                        timestamp_cleaned = timestamp_match.group(1)
+                    else:
+                        print(f"Formato inesperado no timestamp: {timestamp_str}")
+                        continue
+                    
+                    # Converter o timestamp para um objeto datetime
+                    timestamp_msg = datetime.strptime(timestamp_cleaned, "%H:%M, %d/%m/%Y")
+                    
+                    # Comparar com o momento de início do monitoramento
                     if timestamp_msg < inicio_monitoramento:
                         continue
+
 
                     # Verifica se a mensagem veio de uma empresa da lista
                     remetente = remetente_element.get_attribute("data-pre-plain-text")
