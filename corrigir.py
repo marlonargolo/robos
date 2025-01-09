@@ -33,6 +33,9 @@ def monitorar_grupo(driver, nome_grupo, empresas):
         ultima_resposta = datetime.min  # Inicialmente, sem nenhuma resposta enviada
         respondendo = False  # Controle para aguardar mensagens após o período de espera
 
+        # Captura o momento inicial do monitoramento
+        inicio_monitoramento = datetime.now()
+
         while True:
             time.sleep(2)
 
@@ -45,17 +48,27 @@ def monitorar_grupo(driver, nome_grupo, empresas):
             for mensagem in mensagens:
                 try:
                     remetente_element = mensagem.find_element(By.XPATH, ".//div[contains(@class, 'copyable-text')]")
-                    remetente = remetente_element.get_attribute("data-pre-plain-text")
                     texto_element = mensagem.find_element(By.XPATH, ".//span[contains(@class, 'selectable-text')]")
                     texto_mensagem = texto_element.text
 
+                    # Obter o timestamp da mensagem
+                    timestamp_str = remetente_element.get_attribute("data-pre-plain-text").strip()
+                    timestamp_msg = datetime.strptime(
+                        timestamp_str[1:20],  # Ajuste o formato conforme o necessário
+                        "%d/%m/%Y, %H:%M:%S"
+                    )
+
+                    # Ignorar mensagens enviadas antes do início do monitoramento
+                    if timestamp_msg < inicio_monitoramento:
+                        continue
+
                     # Verifica se a mensagem veio de uma empresa da lista
+                    remetente = remetente_element.get_attribute("data-pre-plain-text")
                     if remetente and any(empresa.lower() in remetente.lower() for empresa in empresas):
                         empresa_detectada = next(empresa for empresa in empresas if empresa.lower() in remetente.lower())
 
                         # Cria um identificador único para a mensagem com base no conteúdo e horário
-                        timestamp = remetente_element.get_attribute("data-pre-plain-text").strip()
-                        mensagem_id = f"{texto_mensagem} | {timestamp}"
+                        mensagem_id = f"{texto_mensagem} | {timestamp_str}"
 
                         # Ignora a mensagem se já foi respondida
                         if mensagem_id in mensagens_respondidas:
@@ -79,6 +92,7 @@ def monitorar_grupo(driver, nome_grupo, empresas):
                     print(f"Erro ao processar mensagem: {e}")
     except Exception as e:
         print(f"Erro ao monitorar o grupo: {e}")
+
 
 
 def responder_mensagem(driver, mensagem, resposta):
