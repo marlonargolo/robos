@@ -33,7 +33,7 @@ def monitorar_grupo(driver, nome_grupo, empresas):
         # Ignorar mensagens anteriores
         mensagens_respondidas = set()
         print("Ignorando mensagens antigas...")
-        time.sleep(2)  # Tempo para carregar as mensagens anteriores
+        time.sleep(5)  # Tempo para carregar as mensagens anteriores
         mensagens_respondidas.update(
             msg.text for msg in driver.find_elements(By.XPATH, "//span[contains(@class, 'selectable-text')]")
         )
