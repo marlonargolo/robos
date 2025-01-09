@@ -1,4 +1,3 @@
-import hashlib
 import time
 from datetime import datetime, timedelta
 from selenium import webdriver
@@ -7,7 +6,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import random
 
 
 def iniciar_whatsapp():
@@ -18,14 +16,6 @@ def iniciar_whatsapp():
     print("Escaneie o QR Code no WhatsApp Web e pressione ENTER para continuar...")
     input()  # Pausa até o usuário pressionar ENTER
     return driver
-
-
-def gerar_id_mensagem(remetente, texto_mensagem):
-    """
-    Gera um identificador único para uma mensagem usando um hash do remetente e texto.
-    """
-    hash_input = f"{remetente}-{texto_mensagem}"
-    return hashlib.md5(hash_input.encode()).hexdigest()
 
 
 def monitorar_grupo(driver, nome_grupo, empresas):
@@ -39,55 +29,52 @@ def monitorar_grupo(driver, nome_grupo, empresas):
 
         print(f"Monitorando o grupo: {nome_grupo}")
 
-        ultima_resposta = datetime.min  # Inicialmente, nenhuma mensagem foi respondida
-        mensagens_respondidas = set()  # Conjunto para rastrear mensagens já respondidas
+        mensagens_respondidas = set()  # Armazena mensagens respondidas com identificador único
+        ultima_resposta = datetime.min  # Inicialmente, sem nenhuma resposta enviada
+        respondendo = False  # Controle para aguardar mensagens após o período de espera
 
         while True:
             time.sleep(2)
 
-            # Se o bot ainda está no intervalo de espera, aguarda o tempo de 4 minutos
-            if (datetime.now() - ultima_resposta) < timedelta(minutes=4):
-                continue
+            # Se estamos aguardando e o tempo de 4 minutos não passou, continue
+            if respondendo and (datetime.now() - ultima_resposta < timedelta(minutes=4)):
+                continue  # Aguarda até que o tempo de espera passe
 
             mensagens = driver.find_elements(By.XPATH, "//div[contains(@class, 'message-in')]")
 
             for mensagem in mensagens:
                 try:
-                    # Verificar se o atributo 'data-pre-plain-text' está presente
-                    try:
-                        remetente_element = mensagem.find_element(By.XPATH, ".//div[contains(@class, 'copyable-text')]")
-                        remetente = remetente_element.get_attribute("data-pre-plain-text")
-                    except Exception:
-                        print("Elemento 'copyable-text' não encontrado. Ignorando mensagem.")
-                        continue
-
-                    if not remetente:
-                        continue  # Pula mensagens que não possuem o atributo esperado
-
+                    remetente_element = mensagem.find_element(By.XPATH, ".//div[contains(@class, 'copyable-text')]")
+                    remetente = remetente_element.get_attribute("data-pre-plain-text")
                     texto_element = mensagem.find_element(By.XPATH, ".//span[contains(@class, 'selectable-text')]")
                     texto_mensagem = texto_element.text
 
-                    # Gerar identificador único para a mensagem
-                    id_mensagem = gerar_id_mensagem(remetente, texto_mensagem)
-
-                    # Verifica se a mensagem já foi respondida
-                    if id_mensagem in mensagens_respondidas:
-                        print(f"Mensagem já respondida: {texto_mensagem}")
-                        continue
-
                     # Verifica se a mensagem veio de uma empresa da lista
-                    if any(empresa.lower() in remetente.lower() for empresa in empresas):
+                    if remetente and any(empresa.lower() in remetente.lower() for empresa in empresas):
                         empresa_detectada = next(empresa for empresa in empresas if empresa.lower() in remetente.lower())
 
-                        # Responder a mensagem
-                        print(f"Respondendo à mensagem de {empresa_detectada}: {texto_mensagem}")
-                        resposta = f"Resposta automatizada: {random.randint(100, 999)}"
+                        # Cria um identificador único para a mensagem com base no conteúdo e horário
+                        timestamp = remetente_element.get_attribute("data-pre-plain-text").strip()
+                        mensagem_id = f"{texto_mensagem} | {timestamp}"
+
+                        # Ignora a mensagem se já foi respondida
+                        if mensagem_id in mensagens_respondidas:
+                            print(f"Mensagem já respondida: {texto_mensagem} (ID: {mensagem_id})")
+                            continue
+
+                        # Responder à mensagem
+                        print(f"Respondendo à mensagem de {empresa_detectada}: {texto_mensagem} (ID: {mensagem_id})")
+                        resposta = "118"
                         responder_mensagem(driver, mensagem, resposta)
 
-                        # Atualizar o controle de mensagens respondidas e última resposta
-                        mensagens_respondidas.add(id_mensagem)
+                        # Atualizar o controle de tempo e estado
                         ultima_resposta = datetime.now()
-                        break  # Sai do loop para reiniciar o ciclo de monitoramento
+                        respondendo = True  # Indica que o bot está aguardando o próximo ciclo
+
+                        # Armazena a mensagem como respondida
+                        mensagens_respondidas.add(mensagem_id)
+                        break  # Sai do loop para respeitar o intervalo de 4 minutos
+
                 except Exception as e:
                     print(f"Erro ao processar mensagem: {e}")
     except Exception as e:
@@ -127,7 +114,7 @@ def responder_mensagem(driver, mensagem, resposta):
 
 
 if __name__ == "__main__":
-    lista_empresas = ["Marlon ChatBoot", "Luana Lima", "Guilherme - Barbeiro", "Hugo"]
+    lista_empresas = ["Marlon ChatBoot", "Luana Lima", "Guilherme - Barbeiro"]
     nome_do_grupo = "Grupoteste"
     driver = iniciar_whatsapp()
     try:
