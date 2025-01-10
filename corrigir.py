@@ -37,6 +37,29 @@ def mover_mouse_para_elemento(driver, elemento):
     except Exception as e:
         print(f"Erro ao mover o mouse para o elemento: {e}")
 
+import pyautogui
+import time
+
+def mover_mouse_com_pyautogui(elemento):
+    """
+    Move o mouse para uma posição específica usando pyautogui.
+    """
+    try:
+        # Obtendo a posição do elemento
+        posicao = elemento.location  # Retorna as coordenadas do elemento
+        largura = posicao['x']
+        altura = posicao['y']
+
+        # Calcular o centro do elemento para mover o mouse
+        largura_centro = largura + elemento.size['width'] / 2
+        altura_centro = altura + elemento.size['height'] / 2
+
+        # Mover o mouse para o centro do elemento
+        pyautogui.moveTo(largura_centro, altura_centro, duration=0.5)
+        print("Mouse movido para a posição:", largura_centro, altura_centro)
+
+    except Exception as e:
+        print(f"Erro ao mover o mouse para a posição com pyautogui: {e}")
 
 
 def monitorar_grupo(driver, nome_grupo, empresas):
@@ -79,6 +102,10 @@ def monitorar_grupo(driver, nome_grupo, empresas):
                             any(empresa.lower() in remetente.lower() for empresa in empresas):
 
                         print(f"Nova mensagem de {remetente}: {texto_mensagem}")
+                        
+                        # Mover o mouse até a mensagem usando pyautogui
+                        mover_mouse_com_pyautogui(mensagem)
+
 
                         # Mover o mouse até a mensagem
                         mover_mouse_para_elemento(driver, mensagem)
@@ -157,11 +184,9 @@ def responder_mensagem(driver, mensagem, resposta):
         print(f"Erro ao responder a mensagem: {e}")
 
 
-
-
 if __name__ == "__main__":
-    lista_empresas = ["Hugo", "EMarlon", "Marlon ChatBoot"]
-    nome_do_grupo = "GrupoTeste"
+    lista_empresas = ["Hugo", "EMarlon", "Mercado Z"]
+    nome_do_grupo = "Automacao"
     driver = iniciar_whatsapp()
     try:
         monitorar_grupo(driver, nome_do_grupo, lista_empresas)
