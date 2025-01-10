@@ -32,9 +32,11 @@ def mover_mouse_para_elemento(driver, elemento):
         # Mover o mouse até o elemento
         action = ActionChains(driver)
         action.move_to_element(elemento).perform()
+        action.click()
         print("Mouse movido para o elemento com sucesso.")
     except Exception as e:
         print(f"Erro ao mover o mouse para o elemento: {e}")
+
 
 
 def monitorar_grupo(driver, nome_grupo, empresas):
@@ -114,26 +116,29 @@ def monitorar_grupo(driver, nome_grupo, empresas):
 
 def responder_mensagem(driver, mensagem, resposta):
     try:
-        # Passo 1: Passar o mouse sobre a mensagem para exibir a seta do menu
-        action = ActionChains(driver)
-        action.move_to_element(mensagem).perform()
-        time.sleep(2)
+        # Tornar a seta do menu visível
+        seta_menu = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//span[@aria-hidden='true' and @data-icon='down-context']"))
+        )
+        driver.execute_script(
+            "arguments[0].setAttribute('style','visibility:visible; display:block;');", seta_menu
+        )
 
-        # Passo 2: Localizar e clicar na seta do menu
+        # Garantir que a seta do menu esteja clicável
         seta_menu = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, "//span[@aria-hidden='true' and @data-icon='down-context']"))
         )
         seta_menu.click()
         time.sleep(1)
 
-        # Passo 3: Selecionar a opção "Responder"
+        # Selecionar a opção "Responder"
         opcao_responder = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, '//*[@id="app"]/div/span[5]/div/ul/div/li[1]/div'))
         )
         opcao_responder.click()
         time.sleep(1)
 
-        # Passo 4: Escrever e enviar a resposta
+        # Escrever e enviar a resposta
         caixa_resposta = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, "//footer//div[@contenteditable='true']"))
         )
@@ -142,6 +147,7 @@ def responder_mensagem(driver, mensagem, resposta):
         print("Mensagem respondida com sucesso.")
     except Exception as e:
         print(f"Erro ao responder a mensagem: {e}")
+
 
 
 if __name__ == "__main__":
