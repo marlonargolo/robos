@@ -113,8 +113,7 @@ def monitorar_grupo(driver, nome_grupo, empresas):
         print(f"Erro ao monitorar o grupo: {e}")
 
 
-
-def responder_mensagem(driver, mensagem, resposta):
+def garantir_seta_visivel(driver):
     try:
         # Tornar a seta do menu visível
         seta_menu = WebDriverWait(driver, 10).until(
@@ -123,6 +122,15 @@ def responder_mensagem(driver, mensagem, resposta):
         driver.execute_script(
             "arguments[0].setAttribute('style','visibility:visible; display:block;');", seta_menu
         )
+        print("Seta do menu tornou-se visível.")
+    except Exception as e:
+        print(f"Erro ao tornar a seta visível: {e}")
+
+
+def responder_mensagem(driver, mensagem, resposta):
+    try:
+        # Garantir que a seta do menu está visível
+        garantir_seta_visivel(driver)
 
         # Garantir que a seta do menu esteja clicável
         seta_menu = WebDriverWait(driver, 10).until(
@@ -147,6 +155,7 @@ def responder_mensagem(driver, mensagem, resposta):
         print("Mensagem respondida com sucesso.")
     except Exception as e:
         print(f"Erro ao responder a mensagem: {e}")
+
 
 
 
