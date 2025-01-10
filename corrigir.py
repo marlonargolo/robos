@@ -151,8 +151,8 @@ def responder_mensagem(driver, mensagem, resposta):
 
 
 if __name__ == "__main__":
-    lista_empresas = ["Hugo", "EMarlon", "Mercado Z"]
-    nome_do_grupo = "Automacao"
+    lista_empresas = ["Hugo", "EMarlon", "Marlon ChatBoot"]
+    nome_do_grupo = "GrupoTeste"
     driver = iniciar_whatsapp()
     try:
         monitorar_grupo(driver, nome_do_grupo, lista_empresas)
