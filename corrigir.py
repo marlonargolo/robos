@@ -17,6 +17,25 @@ def iniciar_whatsapp():
     input()  # Pausa até o usuário pressionar ENTER
     return driver
 
+def mover_mouse_para_elemento(driver, elemento):
+    """
+    Leva o mouse até um elemento específico na página.
+
+    :param driver: Instância do webdriver
+    :param elemento: WebElement correspondente ao objeto alvo
+    """
+    try:
+        # Garantir que o elemento esteja visível
+        driver.execute_script("arguments[0].scrollIntoView(true);", elemento)
+        time.sleep(1)  # Pequena pausa para garantir o scroll completo
+
+        # Mover o mouse até o elemento
+        action = ActionChains(driver)
+        action.move_to_element(elemento).perform()
+        print("Mouse movido para o elemento com sucesso.")
+    except Exception as e:
+        print(f"Erro ao mover o mouse para o elemento: {e}")
+
 
 def monitorar_grupo(driver, nome_grupo, empresas):
     try:
@@ -43,6 +62,8 @@ def monitorar_grupo(driver, nome_grupo, empresas):
         while True:
             # Monitorar novas mensagens
             mensagens = driver.find_elements(By.XPATH, "//div[contains(@class, 'message-in')]")
+            nova_mensagem_detectada = False  # Para controlar o loop após responder
+
             for mensagem in mensagens[-5:]:
                 try:
                     remetente_element = mensagem.find_element(By.XPATH, ".//div[contains(@class, 'copyable-text')]")
@@ -57,6 +78,9 @@ def monitorar_grupo(driver, nome_grupo, empresas):
 
                         print(f"Nova mensagem de {remetente}: {texto_mensagem}")
 
+                        # Mover o mouse até a mensagem
+                        mover_mouse_para_elemento(driver, mensagem)
+
                         # Responder a mensagem
                         resposta = f"118"
                         responder_mensagem(driver, mensagem, resposta)
@@ -64,17 +88,28 @@ def monitorar_grupo(driver, nome_grupo, empresas):
                         # Marcar a mensagem como respondida
                         mensagens_respondidas.add(texto_mensagem)
 
-                        # Pausar por 1 minuto
+                        # Atualizar o conjunto de mensagens respondidas com todas as mensagens visíveis
+                        mensagens_respondidas.update(
+                            msg.text for msg in driver.find_elements(By.XPATH, "//span[contains(@class, 'selectable-text')]")
+                        )
+
+                        # Pausar por 1 minuto e aguardar novas mensagens
                         print("Aguardando 1 minuto antes de continuar...")
                         time.sleep(60)  # Suspende o processamento por 1 minuto
-
-                        print("Bot pronto para novas mensagens...")
-                        break  # Após responder, recomeça o loop principal
+                        nova_mensagem_detectada = True
+                        break  # Sai do loop interno para reiniciar o monitoramento
 
                 except Exception as e:
                     print(f"Erro ao processar mensagem: {e}")
+            
+            # Se nenhuma nova mensagem foi detectada, continue o loop
+            if not nova_mensagem_detectada:
+                print("Aguardando novas mensagens...")
+                time.sleep(2)  # Pequena pausa para reduzir uso de CPU
+
     except Exception as e:
         print(f"Erro ao monitorar o grupo: {e}")
+
 
 
 def responder_mensagem(driver, mensagem, resposta):
